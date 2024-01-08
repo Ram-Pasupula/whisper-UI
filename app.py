@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, make_response
 from flask_cors import CORS
 import requests
 import os
@@ -27,24 +27,29 @@ audio = pyaudio.PyAudio()
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    response_text = None
+    result = None
     if request.method == "POST":
         if "file" in request.files:
             # If a file is provided, proceed with file upload
             file = request.files["file"]
             try:
-                response_text = transcode_file(file)
+                response = transcode_file(file)
+                return response
             except Exception as e:
                 return render_template("error.html", error=str(e))
         else:
             # If no file is provided, start audio recording
             audio_file_path = record_audio()
             try:
-                response_text = transcode_file(audio_file_path)
+                response = transcode_file(audio_file_path)
+                return response
             except Exception as e:
                 return render_template("error.html", error=str(e))
 
-    return render_template("index.html", response_text=response_text)
+    if result:
+        return render_template("index.html", result=result)
+    else:
+        return render_template("index.html", result=result)
 
 
 def transcode_file(file):
@@ -61,9 +66,11 @@ def transcode_file(file):
     response = requests.post(BACKEND_API_URL, files=files, params=params)
 
     if response.status_code == 200:
-        return response.text
+        result_text = response.text
+        return result_text
     else:
         raise Exception(f"Error: {response.status_code} - {response.text}")
+
 
 
 def record_audio():
